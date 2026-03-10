@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
 import { ProgressCircle } from './ProgressCircle';
 import { dbService } from '../services/db';
 import { getTodayStr } from '../utils/storage';
@@ -349,12 +350,22 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gray-50 pb-64">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="max-w-md mx-auto min-h-screen bg-gray-50 pb-64"
+    >
       {/* Header / Macros */}
-      <div className="bg-white px-6 py-8 rounded-b-[2.5rem] shadow-sm mb-6">
+      <motion.div 
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.5 }}
+        className="bg-white px-6 py-8 rounded-b-[2.5rem] shadow-sm mb-6"
+      >
         <div className="flex justify-between items-end mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Today</h1>
+            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500 tracking-tight mb-1">Macro Tracker</h1>
             <p className="text-sm text-gray-500 font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
           </div>
           <button 
@@ -399,15 +410,20 @@ export const Dashboard: React.FC = () => {
             size="md"
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Timeline */}
-      <div className="px-4 space-y-4">
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="px-4 space-y-4"
+      >
         {renderMealSection('breakfast', 'Breakfast')}
         {renderMealSection('lunch', 'Lunch')}
         {renderMealSection('dinner', 'Dinner')}
         {renderMealSection('snack', 'Snacks')}
-      </div>
+      </motion.div>
 
       {/* Edit Goals Modal */}
       {showEditGoals && (
@@ -516,7 +532,7 @@ export const Dashboard: React.FC = () => {
                 </select>
               </div>
 
-              <div className="relative flex-1 bg-gray-100 rounded-xl border-2 border-transparent focus-within:border-indigo-500 focus-within:bg-white transition-all flex items-end">
+              <div className="relative flex-1 bg-gray-100 rounded-2xl border-2 border-transparent focus-within:border-indigo-500 focus-within:bg-white focus-within:shadow-xl focus-within:-translate-y-2 transition-all duration-300 ease-out flex items-end">
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -528,7 +544,7 @@ export const Dashboard: React.FC = () => {
                     }
                   }}
                   placeholder='e.g. "120g eggs, 100g tuna"'
-                  className="w-full bg-transparent border-none text-gray-900 pl-4 pr-12 py-3 outline-none placeholder:text-gray-400 resize-none min-h-[44px]"
+                  className="w-full bg-transparent border-none text-gray-900 pl-4 pr-12 py-3 outline-none placeholder:text-gray-400 resize-none min-h-[48px] focus:min-h-[130px] transition-all duration-300 ease-out"
                   rows={1}
                   disabled={isLoading}
                 />
@@ -553,6 +569,6 @@ export const Dashboard: React.FC = () => {
           </form>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
