@@ -61,7 +61,7 @@ export const Dashboard: React.FC = () => {
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 250)}px`;
     }
   };
 
@@ -537,12 +537,6 @@ export const Dashboard: React.FC = () => {
                   ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleAddEntry(e);
-                    }
-                  }}
                   placeholder='e.g. "120g eggs, 100g tuna"'
                   className="w-full bg-transparent border-none text-gray-900 pl-4 pr-12 py-3 outline-none placeholder:text-gray-400 resize-none min-h-[48px] focus:min-h-[130px] transition-all duration-300 ease-out"
                   rows={1}
