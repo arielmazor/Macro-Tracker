@@ -1,0 +1,5 @@
+{
+  "name": "MacroTrack",
+  "description": "A minimal, data-driven nutrition tracking app with AI-powered food logging.",
+  "requestFramePermissions": []
+}

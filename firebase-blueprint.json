@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User's basic bio-details and macro targets.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The user's Firebase Auth UID" },
+        "age": { "type": "number" },
+        "weight": { "type": "number" },
+        "height": { "type": "number" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "activityLevel": { "type": "string", "enum": ["sedentary", "light", "moderate", "active", "very_active"] },
+        "goal": { "type": "string", "enum": ["lose", "maintain", "gain"] },
+        "targets": {
+          "type": "object",
+          "properties": {
+            "calories": { "type": "number" },
+            "protein": { "type": "number" },
+            "carbs": { "type": "number" },
+            "fats": { "type": "number" }
+          },
+          "required": ["calories", "protein", "carbs", "fats"]
+        }
+      },
+      "required": ["userId", "age", "weight", "height", "gender", "activityLevel", "goal", "targets"]
+    },
+    "DailyLog": {
+      "title": "DailyLog",
+      "description": "A log of food entries for a specific day.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The user's Firebase Auth UID" },
+        "date": { "type": "string", "description": "YYYY-MM-DD format" },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "macros": {
+                "type": "object",
+                "properties": {
+                  "calories": { "type": "number" },
+                  "protein": { "type": "number" },
+                  "carbs": { "type": "number" },
+                  "fats": { "type": "number" }
+                },
+                "required": ["calories", "protein", "carbs", "fats"]
+              },
+              "mealType": { "type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"] },
+              "timestamp": { "type": "string" },
+              "isSavedMeal": { "type": "boolean" }
+            },
+            "required": ["id", "name", "macros", "mealType", "timestamp"]
+          }
+        }
+      },
+      "required": ["userId", "date", "entries"]
+    },
+    "SavedMeal": {
+      "title": "SavedMeal",
+      "description": "A meal saved by the user for quick adding later.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The user's Firebase Auth UID" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "macros": {
+          "type": "object",
+          "properties": {
+            "calories": { "type": "number" },
+            "protein": { "type": "number" },
+            "carbs": { "type": "number" },
+            "fats": { "type": "number" }
+          },
+          "required": ["calories", "protein", "carbs", "fats"]
+        },
+        "usageCount": { "type": "number" }
+      },
+      "required": ["userId", "id", "name", "macros", "usageCount"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profiles. The document ID must match the user's UID."
+    },
+    "/users/{userId}/dailyLogs/{date}": {
+      "schema": { "$ref": "#/entities/DailyLog" },
+      "description": "Stores daily logs for a user. The document ID is the date (YYYY-MM-DD)."
+    },
+    "/users/{userId}/savedMeals/{mealId}": {
+      "schema": { "$ref": "#/entities/SavedMeal" },
+      "description": "Stores saved meals for a user. The document ID is a unique meal ID."
+    }
+  }
+}

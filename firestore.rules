@@ -1,0 +1,107 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "hila.mazor.mail@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+    
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+
+    function roleAndStatusUnchanged() {
+      return request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+             request.resource.data.get('status', 'approved') == resource.data.get('status', 'approved');
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'age', 'weight', 'height', 'gender', 'activityLevel', 'goal', 'targets']) &&
+             data.userId is string &&
+             data.age is number && data.age > 0 &&
+             data.weight is number && data.weight > 0 &&
+             data.height is number && data.height > 0 &&
+             data.gender in ['male', 'female'] &&
+             data.activityLevel in ['sedentary', 'light', 'moderate', 'active', 'very_active'] &&
+             data.goal in ['lose', 'maintain', 'gain'] &&
+             (!('status' in data) || data.status in ['pending', 'approved', 'rejected']) &&
+             (!('role' in data) || data.role in ['admin', 'user']) &&
+             (!('email' in data) || data.email is string) &&
+             (!('displayName' in data) || data.displayName is string) &&
+             data.targets is map &&
+             data.targets.keys().hasAll(['calories', 'protein', 'carbs', 'fats']) &&
+             data.targets.calories is number &&
+             data.targets.protein is number &&
+             data.targets.carbs is number &&
+             data.targets.fats is number;
+    }
+
+    function isValidDailyLog(data) {
+      return data.keys().hasAll(['userId', 'date', 'entries']) &&
+             data.userId is string &&
+             data.date is string &&
+             data.entries is list;
+    }
+
+    function isValidSavedMeal(data) {
+      return data.keys().hasAll(['userId', 'id', 'name', 'macros', 'usageCount']) &&
+             data.userId is string &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.usageCount is number && data.usageCount >= 0 &&
+             data.macros is map &&
+             data.macros.keys().hasAll(['calories', 'protein', 'carbs', 'fats']) &&
+             data.macros.calories is number &&
+             data.macros.protein is number &&
+             data.macros.carbs is number &&
+             data.macros.fats is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if (isOwner(userId) && isValidUserProfile(request.resource.data) && uidUnchanged() && request.resource.data.get('role', 'user') == 'user' && request.resource.data.get('status', 'pending') == 'pending') || (isAdmin() && isValidUserProfile(request.resource.data));
+      allow update: if (isOwner(userId) && isValidUserProfile(request.resource.data) && uidNotModified() && roleAndStatusUnchanged()) || (isAdmin() && isValidUserProfile(request.resource.data));
+      allow delete: if isOwner(userId) || isAdmin();
+
+      match /dailyLogs/{date} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidDailyLog(request.resource.data) && uidUnchanged();
+        allow update: if isOwner(userId) && isValidDailyLog(request.resource.data) && uidNotModified();
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /savedMeals/{mealId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidSavedMeal(request.resource.data) && uidUnchanged();
+        allow update: if isOwner(userId) && isValidSavedMeal(request.resource.data) && uidNotModified();
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+  }
+}
