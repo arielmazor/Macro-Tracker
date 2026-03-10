@@ -4,7 +4,7 @@ import { dbService } from '../services/db';
 import { getTodayStr } from '../utils/storage';
 import { FoodEntry, MealType, UserProfile, DailyLog, SavedMeal } from '../types';
 import { parseFoodEntry } from '../services/gemini';
-import { Plus, Loader2, Bookmark, Trash2, ChevronDown, ChevronUp, Edit2, Library, X, Check } from 'lucide-react';
+import { Plus, Loader2, Bookmark, Trash2, ChevronDown, ChevronUp, Edit2, Library, X, Check, Settings } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -19,6 +19,13 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedSnacks, setExpandedSnacks] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  
+  // Goals Edit State
+  const [showEditGoals, setShowEditGoals] = useState(false);
+  const [editGoalCalories, setEditGoalCalories] = useState(0);
+  const [editGoalProtein, setEditGoalProtein] = useState(0);
+  const [editGoalCarbs, setEditGoalCarbs] = useState(0);
+  const [editGoalFats, setEditGoalFats] = useState(0);
   
   // Edit State
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
@@ -180,6 +187,33 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const openEditGoals = () => {
+    if (profile) {
+      setEditGoalCalories(profile.targets.calories);
+      setEditGoalProtein(profile.targets.protein);
+      setEditGoalCarbs(profile.targets.carbs);
+      setEditGoalFats(profile.targets.fats);
+      setShowEditGoals(true);
+    }
+  };
+
+  const saveGoals = async () => {
+    if (user && profile) {
+      const updatedProfile = {
+        ...profile,
+        targets: {
+          calories: Number(editGoalCalories) || 0,
+          protein: Number(editGoalProtein) || 0,
+          carbs: Number(editGoalCarbs) || 0,
+          fats: Number(editGoalFats) || 0,
+        }
+      };
+      await dbService.saveProfile(user.uid, updatedProfile);
+      setProfile(updatedProfile);
+      setShowEditGoals(false);
+    }
+  };
+
   if (!profile) return null;
 
   const consumed = log.entries.reduce(
@@ -315,7 +349,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gray-50 pb-40">
+    <div className="max-w-md mx-auto min-h-screen bg-gray-50 pb-64">
       {/* Header / Macros */}
       <div className="bg-white px-6 py-8 rounded-b-[2.5rem] shadow-sm mb-6">
         <div className="flex justify-between items-end mb-8">
@@ -323,6 +357,13 @@ export const Dashboard: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Today</h1>
             <p className="text-sm text-gray-500 font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
           </div>
+          <button 
+            onClick={openEditGoals}
+            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+            title="Edit Goals"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="flex justify-center mb-8">
@@ -367,6 +408,48 @@ export const Dashboard: React.FC = () => {
         {renderMealSection('dinner', 'Dinner')}
         {renderMealSection('snack', 'Snacks')}
       </div>
+
+      {/* Edit Goals Modal */}
+      {showEditGoals && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Edit Goals</h3>
+              <button onClick={() => setShowEditGoals(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Calories (kcal)</label>
+                <input type="number" value={editGoalCalories} onChange={(e) => setEditGoalCalories(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Protein (g)</label>
+                  <input type="number" value={editGoalProtein} onChange={(e) => setEditGoalProtein(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Carbs (g)</label>
+                  <input type="number" value={editGoalCarbs} onChange={(e) => setEditGoalCarbs(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fats (g)</label>
+                  <input type="number" value={editGoalFats} onChange={(e) => setEditGoalFats(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={saveGoals}
+              className="w-full mt-6 bg-indigo-600 text-white font-semibold py-3.5 rounded-xl shadow-md shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Quick Add Input (Sticky Bottom) */}
       <div className="fixed bottom-[72px] left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 p-4 pb-safe z-40">
