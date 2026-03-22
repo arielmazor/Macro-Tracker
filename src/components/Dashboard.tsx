@@ -3,16 +3,18 @@ import { motion } from 'motion/react';
 import { ProgressCircle } from './ProgressCircle';
 import { dbService } from '../services/db';
 import { getTodayStr } from '../utils/storage';
+import { format, parseISO, addDays, subDays } from 'date-fns';
 import { FoodEntry, MealType, UserProfile, DailyLog, SavedMeal } from '../types';
 import { parseFoodEntry } from '../services/gemini';
-import { Plus, Loader2, Bookmark, Trash2, ChevronDown, ChevronUp, Edit2, Library, X, Check, Settings } from 'lucide-react';
+import { Plus, Loader2, Bookmark, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit2, Library, X, Check, Settings } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const [currentDateStr, setCurrentDateStr] = useState(getTodayStr());
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [log, setLog] = useState<DailyLog>({ userId: user?.uid || '', date: getTodayStr(), entries: [] });
+  const [log, setLog] = useState<DailyLog>({ userId: user?.uid || '', date: currentDateStr, entries: [] });
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [input, setInput] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<MealType>('breakfast');
@@ -44,12 +46,12 @@ export const Dashboard: React.FC = () => {
     dbService.getProfile(user.uid).then(setProfile);
     dbService.getSavedMeals(user.uid).then(setSavedMeals);
     
-    const unsubscribe = dbService.subscribeToDailyLog(user.uid, getTodayStr(), (updatedLog) => {
+    const unsubscribe = dbService.subscribeToDailyLog(user.uid, currentDateStr, (updatedLog) => {
       setLog(updatedLog);
     });
     
     return () => unsubscribe();
-  }, [user]);
+  }, [user, currentDateStr]);
 
   const refreshSavedMeals = async () => {
     if (user) {
@@ -80,32 +82,32 @@ export const Dashboard: React.FC = () => {
       // 1. Check local library
       const savedMeal = await dbService.findMealByName(user.uid, input.trim());
       
-      let newEntry: FoodEntry;
+      let newEntries: FoodEntry[] = [];
 
       if (savedMeal) {
-        newEntry = {
+        newEntries = [{
           id: Date.now().toString(),
           name: savedMeal.name,
           macros: savedMeal.macros,
           mealType: selectedMeal,
           timestamp: new Date().toISOString(),
           isSavedMeal: true,
-        };
+        }];
         await dbService.incrementMealUsage(user.uid, savedMeal.id);
       } else {
         // 2. AI API Call
         const parsed = await parseFoodEntry(input, selectedMeal);
-        newEntry = {
-          id: Date.now().toString(),
-          name: parsed.name,
-          macros: parsed.macros,
+        newEntries = parsed.items.map((item, index) => ({
+          id: Date.now().toString() + '-' + index,
+          name: item.name,
+          macros: item.macros,
           mealType: selectedMeal,
           timestamp: new Date().toISOString(),
           isSavedMeal: false,
-        };
+        }));
       }
 
-      await dbService.addEntry(user.uid, getTodayStr(), newEntry);
+      await dbService.addEntries(user.uid, currentDateStr, newEntries);
       setInput('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
       await refreshSavedMeals();
@@ -128,7 +130,7 @@ export const Dashboard: React.FC = () => {
         timestamp: new Date().toISOString(),
         isSavedMeal: true,
       };
-      await dbService.addEntry(user.uid, getTodayStr(), newEntry);
+      await dbService.addEntries(user.uid, currentDateStr, [newEntry]);
       await dbService.incrementMealUsage(user.uid, meal.id);
       setShowLibrary(false);
       await refreshSavedMeals();
@@ -141,7 +143,7 @@ export const Dashboard: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (user) {
-      await dbService.removeEntry(user.uid, getTodayStr(), id);
+      await dbService.removeEntry(user.uid, currentDateStr, id);
     }
   };
 
@@ -184,7 +186,7 @@ export const Dashboard: React.FC = () => {
       };
       
       setEditingEntry(null);
-      await dbService.updateEntry(user.uid, getTodayStr(), editingEntry.id, updatedEntry);
+      await dbService.updateEntry(user.uid, currentDateStr, editingEntry.id, updatedEntry);
     }
   };
 
@@ -366,7 +368,28 @@ export const Dashboard: React.FC = () => {
         <div className="flex justify-between items-end mb-8">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500 tracking-tight mb-1">Macro Tracker</h1>
-            <p className="text-sm text-gray-500 font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <button 
+                onClick={() => setCurrentDateStr(format(subDays(parseISO(currentDateStr), 1), 'yyyy-MM-dd'))} 
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+                title="Previous Day"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <p className="text-sm text-gray-600 font-medium min-w-[120px] text-center">
+                {currentDateStr === getTodayStr() 
+                  ? 'Today' 
+                  : format(parseISO(currentDateStr), 'MMM d, yyyy')}
+              </p>
+              <button 
+                onClick={() => setCurrentDateStr(format(addDays(parseISO(currentDateStr), 1), 'yyyy-MM-dd'))} 
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                disabled={currentDateStr === getTodayStr()}
+                title="Next Day"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <button 
             onClick={openEditGoals}

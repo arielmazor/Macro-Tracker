@@ -4,10 +4,10 @@ import { Macros, MealType } from '../types';
 export const parseFoodEntry = async (
   query: string,
   mealType: MealType
-): Promise<{ name: string; macros: Macros }> => {
-  const apiKey = process.env.GEMINI_API_KEY;
+): Promise<{ items: { name: string; macros: Macros }[] }> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('Gemini API key is missing.');
+    throw new Error('Gemini API key is missing. Add VITE_GEMINI_API_KEY to your .env file.');
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -16,6 +16,7 @@ export const parseFoodEntry = async (
     You are an expert nutritionist and calorie tracking assistant.
     The user will provide a food entry (like "120g eggs, 100g tuna" or "a bowl of cereal").
     Your task is to estimate the macros (calories, protein, carbs, fats) for the given food.
+    CRITICAL: You MUST break down the user's input into separate, distinct ingredients. For example, if the user says "chicken, rice, and potato", you must return three separate items (one for chicken, one for rice, one for potato) with their individual macros. 
     
     Context: This is for a ${mealType}.
     - If it's a main meal (breakfast, lunch, dinner), assume standard cooking oils if not specified.
@@ -33,22 +34,32 @@ export const parseFoodEntry = async (
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          name: {
-            type: Type.STRING,
-            description: 'A concise, clean name for the food entry (e.g., "Eggs and Tuna").',
-          },
-          macros: {
-            type: Type.OBJECT,
-            properties: {
-              calories: { type: Type.NUMBER, description: 'Total calories (kcal)' },
-              protein: { type: Type.NUMBER, description: 'Total protein in grams' },
-              carbs: { type: Type.NUMBER, description: 'Total carbohydrates in grams' },
-              fats: { type: Type.NUMBER, description: 'Total fats in grams' },
-            },
-            required: ['calories', 'protein', 'carbs', 'fats'],
-          },
+          items: {
+            type: Type.ARRAY,
+            description: 'A list of distinct ingredients that make up the meal.',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: {
+                  type: Type.STRING,
+                  description: 'A concise, clean name for the specific ingredient (e.g., "Chicken Breast" or "White Rice").',
+                },
+                macros: {
+                  type: Type.OBJECT,
+                  properties: {
+                    calories: { type: Type.NUMBER, description: 'Total calories (kcal)' },
+                    protein: { type: Type.NUMBER, description: 'Total protein in grams' },
+                    carbs: { type: Type.NUMBER, description: 'Total carbohydrates in grams' },
+                    fats: { type: Type.NUMBER, description: 'Total fats in grams' },
+                  },
+                  required: ['calories', 'protein', 'carbs', 'fats'],
+                },
+              },
+              required: ['name', 'macros'],
+            }
+          }
         },
-        required: ['name', 'macros'],
+        required: ['items'],
       },
     },
   });

@@ -152,6 +152,11 @@ export const dbService = {
     log.entries.push(entry);
     await dbService.saveDailyLog(userId, log);
   },
+  addEntries: async (userId: string, dateStr: string, entries: FoodEntry[]) => {
+    const log = await dbService.getDailyLog(userId, dateStr);
+    log.entries.push(...entries);
+    await dbService.saveDailyLog(userId, log);
+  },
   updateEntry: async (userId: string, dateStr: string, entryId: string, updatedEntry: FoodEntry) => {
     const log = await dbService.getDailyLog(userId, dateStr);
     const index = log.entries.findIndex(e => e.id === entryId);

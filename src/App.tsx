@@ -52,7 +52,7 @@ function MainApp() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Awaiting Approval</h1>
         <p className="text-gray-500 mb-8 max-w-sm">Your account is currently pending approval from an administrator. Please check back later.</p>
-        <button 
+        <button
           onClick={logout}
           className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium shadow-sm hover:bg-gray-50 transition-colors"
         >
@@ -75,7 +75,7 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-indigo-100 selection:text-indigo-900">
       <div className="absolute top-4 right-4 z-50">
-        <button 
+        <button
           onClick={logout}
           className="p-2 bg-white text-gray-400 hover:text-gray-600 rounded-xl shadow-sm hover:shadow-md transition-all"
           title="Sign Out"
@@ -101,7 +101,7 @@ function MainApp() {
             <LayoutGrid className="w-6 h-6 mb-1" strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
             <span className="text-[10px] font-medium">Today</span>
           </button>
-          
+
           <button
             onClick={() => setActiveTab('stats')}
             className={cn(
