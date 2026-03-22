@@ -312,7 +312,7 @@ export const Dashboard: React.FC = () => {
                       <div>
                         <p className="font-medium text-gray-900 text-sm">{entry.name}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {Math.round(entry.macros.protein)}g P • {Math.round(entry.macros.carbs)}g C • {Math.round(entry.macros.fats)}g F
+                          {Math.round(entry.macros.calories)} kcal • {Math.round(entry.macros.protein)}g P • {Math.round(entry.macros.carbs)}g C • {Math.round(entry.macros.fats)}g F
                         </p>
                       </div>
                       <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
