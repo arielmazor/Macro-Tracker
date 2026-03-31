@@ -6,7 +6,7 @@ import { getTodayStr } from '../utils/storage';
 import { format, parseISO, addDays, subDays } from 'date-fns';
 import { FoodEntry, MealType, UserProfile, DailyLog, SavedMeal } from '../types';
 import { parseFoodEntry } from '../services/gemini';
-import { Plus, Loader2, Bookmark, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit2, Library, X, Check, Settings } from 'lucide-react';
+import { Plus, Loader2, Bookmark, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit2, Library, X, Check, Settings, Copy } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -22,6 +22,7 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedSnacks, setExpandedSnacks] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   // Goals Edit State
   const [showEditGoals, setShowEditGoals] = useState(false);
@@ -217,6 +218,47 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleCopyDay = () => {
+    const dateFormatted = format(parseISO(currentDateStr), 'MMMM d, yyyy');
+    const mealTypes: { type: MealType; label: string }[] = [
+      { type: 'breakfast', label: 'Breakfast' },
+      { type: 'lunch', label: 'Lunch' },
+      { type: 'dinner', label: 'Dinner' },
+      { type: 'snack', label: 'Snacks' }
+    ];
+    
+    let text = `Daily Macros - ${dateFormatted}\n\n`;
+    
+    mealTypes.forEach(({ type, label }) => {
+      const entries = log.entries.filter(e => e.mealType === type);
+      if (entries.length > 0) {
+        const totalKcal = Math.round(entries.reduce((sum, e) => sum + e.macros.calories, 0));
+        text += `${label} (${totalKcal} kcal):\n`;
+        entries.forEach(e => {
+          text += `- ${e.name}: ${Math.round(e.macros.calories)} kcal (${Math.round(e.macros.protein)}g P, ${Math.round(e.macros.carbs)}g C, ${Math.round(e.macros.fats)}g F)\n`;
+        });
+        text += '\n';
+      }
+    });
+
+    const total = log.entries.reduce(
+      (acc, entry) => ({
+        calories: acc.calories + entry.macros.calories,
+        protein: acc.protein + entry.macros.protein,
+        carbs: acc.carbs + entry.macros.carbs,
+        fats: acc.fats + entry.macros.fats,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+
+    text += `Total Day: ${Math.round(total.calories)} kcal • ${Math.round(total.protein)}g P • ${Math.round(total.carbs)}g C • ${Math.round(total.fats)}g F`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   if (!profile) return null;
 
   const consumed = log.entries.reduce(
@@ -391,13 +433,22 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <button 
-            onClick={openEditGoals}
-            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
-            title="Edit Goals"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handleCopyDay}
+              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+              title="Copy Day Summary"
+            >
+              {copied ? <Check className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
+            </button>
+            <button 
+              onClick={openEditGoals}
+              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+              title="Edit Goals"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex justify-center mb-8">
