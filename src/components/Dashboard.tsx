@@ -10,13 +10,22 @@ import { Plus, Loader2, Trash2, ChevronLeft, ChevronRight, Edit2, X, Check, Sett
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
 
+const getDefaultMealType = (): MealType => {
+  const hour = new Date().getHours();
+  if (hour >= 19) return 'dinner';
+  if (hour >= 16) return 'pre-workout';
+  if (hour >= 13) return 'lunch';
+  if (hour >= 5 && hour < 13) return 'breakfast';
+  return 'snack';
+};
+
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [currentDateStr, setCurrentDateStr] = useState(getTodayStr());
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [log, setLog] = useState<DailyLog>({ userId: user?.uid || '', date: currentDateStr, entries: [] });
   const [input, setInput] = useState('');
-  const [selectedMeal, setSelectedMeal] = useState<MealType>('breakfast');
+  const [selectedMeal, setSelectedMeal] = useState<MealType>(getDefaultMealType());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -296,20 +305,20 @@ export const Dashboard: React.FC = () => {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="max-w-md lg:max-w-5xl mx-auto min-h-screen bg-gray-50 pb-64 lg:p-6 lg:pb-32 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start"
+      className="max-w-md mx-auto min-h-screen bg-gray-50 pb-64"
     >
       {/* Header / Macros */}
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="lg:col-span-5 bg-white px-6 py-8 rounded-b-[2.5rem] lg:rounded-[2.5rem] shadow-sm mb-6 lg:mb-0 lg:sticky lg:top-6"
+        className="bg-white px-6 py-8 rounded-b-[2.5rem] shadow-sm mb-6"
       >
         <div className="flex justify-between items-end mb-8">
           <div>
             <div className="flex items-baseline gap-2 mb-1">
               <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500 tracking-tight">Macro Tracker</h1>
-              <span className="text-sm font-medium text-gray-400">v1.0.2</span>
+              <span className="text-sm font-medium text-gray-400">v1.0.3</span>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <button 
@@ -392,7 +401,7 @@ export const Dashboard: React.FC = () => {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.5 }}
-        className="lg:col-span-7 px-4 lg:px-0 space-y-4"
+        className="px-4 space-y-4"
       >
         {renderMealSection('breakfast', 'Breakfast')}
         {renderMealSection('lunch', 'Lunch')}
@@ -444,8 +453,8 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* Quick Add Input (Sticky Bottom) */}
-      <div className="fixed bottom-[72px] lg:bottom-8 left-0 right-0 lg:left-auto lg:right-auto lg:w-full lg:max-w-xl lg:mx-auto bg-white/90 lg:bg-white/80 lg:shadow-2xl backdrop-blur-xl border-t lg:border border-gray-100 lg:rounded-3xl p-4 pb-safe z-40 lg:ml-[calc(50%-28rem)]">
-        <div className="max-w-md lg:max-w-full mx-auto relative">
+      <div className="fixed bottom-[72px] left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 p-4 pb-safe z-40">
+        <div className="max-w-md mx-auto relative">
           <form onSubmit={handleAddEntry} className="flex flex-col gap-2">
             {error && (
               <div className="bg-red-50 text-red-600 text-xs p-2 rounded-lg border border-red-100 flex items-start gap-2">
