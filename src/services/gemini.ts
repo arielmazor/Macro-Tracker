@@ -11,6 +11,24 @@ const PIECE_LIBRARY: Record<string, { kcal: number, protein: number, carbs: numb
 };
 
 function parseLocally(query: string): { items: { name: string; macros: Macros }[] } | null {
+  // Check for explicit shortcut/programmatic prompt with macros included
+  const shortcutMatch = query.match(/Please log the following meal:\s*(.*?)(?:\.|\n|\s)*Estimated total:\s*([\d.]+)\s*Calories,\s*([\d.]+)\s*g\s*Protein,\s*([\d.]+)\s*g\s*Carbs,\s*([\d.]+)\s*g\s*Fat\.?/i);
+  if (shortcutMatch) {
+    return {
+      items: [
+        {
+          name: shortcutMatch[1].trim(),
+          macros: {
+            calories: parseFloat(shortcutMatch[2]),
+            protein: parseFloat(shortcutMatch[3]),
+            carbs: parseFloat(shortcutMatch[4]),
+            fats: parseFloat(shortcutMatch[5]),
+          }
+        }
+      ]
+    };
+  }
+
   const items: { name: string; macros: Macros }[] = [];
   
   // Try to split query by commas
