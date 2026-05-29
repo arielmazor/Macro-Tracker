@@ -4,9 +4,9 @@ import { ProgressCircle } from './ProgressCircle';
 import { dbService } from '../services/db';
 import { getTodayStr } from '../utils/storage';
 import { format, parseISO, addDays, subDays } from 'date-fns';
-import { FoodEntry, MealType, UserProfile, DailyLog, SavedMeal } from '../types';
+import { FoodEntry, MealType, UserProfile, DailyLog } from '../types';
 import { parseFoodEntry } from '../services/gemini';
-import { Plus, Loader2, Bookmark, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit2, Library, X, Check, Settings, Copy } from 'lucide-react';
+import { Plus, Loader2, Trash2, ChevronLeft, ChevronRight, Edit2, X, Check, Settings, Copy } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -15,13 +15,10 @@ export const Dashboard: React.FC = () => {
   const [currentDateStr, setCurrentDateStr] = useState(getTodayStr());
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [log, setLog] = useState<DailyLog>({ userId: user?.uid || '', date: currentDateStr, entries: [] });
-  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [input, setInput] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<MealType>('breakfast');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedSnacks, setExpandedSnacks] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
   const [copied, setCopied] = useState(false);
   
   // Goals Edit State
@@ -45,7 +42,6 @@ export const Dashboard: React.FC = () => {
     if (!user) return;
     
     dbService.getProfile(user.uid).then(setProfile);
-    dbService.getSavedMeals(user.uid).then(setSavedMeals);
     
     const unsubscribe = dbService.subscribeToDailyLog(user.uid, currentDateStr, (updatedLog) => {
       setLog(updatedLog);
@@ -53,13 +49,6 @@ export const Dashboard: React.FC = () => {
     
     return () => unsubscribe();
   }, [user, currentDateStr]);
-
-  const refreshSavedMeals = async () => {
-    if (user) {
-      const meals = await dbService.getSavedMeals(user.uid);
-      setSavedMeals(meals);
-    }
-  };
 
   const adjustTextareaHeight = () => {
     if (textareaRef.current) {
@@ -80,63 +69,20 @@ export const Dashboard: React.FC = () => {
     setError(null);
 
     try {
-      // 1. Check local library
-      const savedMeal = await dbService.findMealByName(user.uid, input.trim());
-      
-      let newEntries: FoodEntry[] = [];
-
-      if (savedMeal) {
-        newEntries = [{
-          id: Date.now().toString(),
-          name: savedMeal.name,
-          macros: savedMeal.macros,
-          mealType: selectedMeal,
-          timestamp: new Date().toISOString(),
-          isSavedMeal: true,
-        }];
-        await dbService.incrementMealUsage(user.uid, savedMeal.id);
-      } else {
-        // 2. AI API Call
-        const parsed = await parseFoodEntry(input, selectedMeal);
-        newEntries = parsed.items.map((item, index) => ({
-          id: Date.now().toString() + '-' + index,
-          name: item.name,
-          macros: item.macros,
-          mealType: selectedMeal,
-          timestamp: new Date().toISOString(),
-          isSavedMeal: false,
-        }));
-      }
+      const parsed = await parseFoodEntry(input, selectedMeal);
+      const newEntries = parsed.items.map((item, index) => ({
+        id: Date.now().toString() + '-' + index,
+        name: item.name,
+        macros: item.macros,
+        mealType: selectedMeal,
+        timestamp: new Date().toISOString()
+      }));
 
       await dbService.addEntries(user.uid, currentDateStr, newEntries);
       setInput('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
-      await refreshSavedMeals();
     } catch (err: any) {
       setError(err.message || 'Failed to parse entry. Check API key or try a different description.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAddFromLibrary = async (meal: SavedMeal) => {
-    if (!user) return;
-    setIsLoading(true);
-    try {
-      const newEntry: FoodEntry = {
-        id: Date.now().toString(),
-        name: meal.name,
-        macros: meal.macros,
-        mealType: selectedMeal,
-        timestamp: new Date().toISOString(),
-        isSavedMeal: true,
-      };
-      await dbService.addEntries(user.uid, currentDateStr, [newEntry]);
-      await dbService.incrementMealUsage(user.uid, meal.id);
-      setShowLibrary(false);
-      await refreshSavedMeals();
-    } catch (err) {
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -145,22 +91,6 @@ export const Dashboard: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (user) {
       await dbService.removeEntry(user.uid, currentDateStr, id);
-    }
-  };
-
-  const handleSaveMeal = async (entry: FoodEntry) => {
-    if (user) {
-      await dbService.saveMeal(user.uid, {
-        id: Date.now().toString(),
-        name: entry.name,
-        macros: entry.macros,
-        usageCount: 1,
-      });
-      const updatedLog = { ...log };
-      const e = updatedLog.entries.find(e => e.id === entry.id);
-      if (e) e.isSavedMeal = true;
-      await dbService.saveDailyLog(user.uid, updatedLog);
-      await refreshSavedMeals();
     }
   };
 
@@ -223,6 +153,7 @@ export const Dashboard: React.FC = () => {
     const mealTypes: { type: MealType; label: string }[] = [
       { type: 'breakfast', label: 'Breakfast' },
       { type: 'lunch', label: 'Lunch' },
+      { type: 'pre-workout', label: 'Pre-Workout' },
       { type: 'dinner', label: 'Dinner' },
       { type: 'snack', label: 'Snacks' }
     ];
@@ -273,122 +204,89 @@ export const Dashboard: React.FC = () => {
 
   const renderMealSection = (type: MealType, title: string) => {
     const entries = log.entries.filter(e => e.mealType === type);
-    const isSnack = type === 'snack';
-    
-    if (isSnack && !expandedSnacks && entries.length === 0) {
-      return (
-        <button 
-          onClick={() => setExpandedSnacks(true)}
-          className="w-full flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 text-gray-500 hover:bg-gray-50 transition-colors"
-        >
-          <span className="font-medium">Snacks</span>
-          <ChevronDown className="w-5 h-5" />
-        </button>
-      );
-    }
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div 
-          className={cn(
-            "px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center",
-            isSnack && "cursor-pointer hover:bg-gray-50 transition-colors"
-          )}
-          onClick={() => isSnack && setExpandedSnacks(!expandedSnacks)}
-        >
+        <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
           <h3 className="font-semibold text-gray-900 capitalize">{title}</h3>
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-gray-500">
               {Math.round(entries.reduce((sum, e) => sum + e.macros.calories, 0))} kcal
             </span>
-            {isSnack && (
-              expandedSnacks ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
-            )}
           </div>
         </div>
         
-        {(!isSnack || expandedSnacks) && (
-          <div className="divide-y divide-gray-50">
-            {entries.length === 0 ? (
-              <div className="p-4 text-sm text-gray-400 text-center italic">No entries yet</div>
-            ) : (
-              entries.map(entry => (
-                <div key={entry.id} className="p-4 group">
-                  {editingEntry?.id === entry.id ? (
-                    <div className="space-y-3">
-                      <input 
-                        type="text" 
-                        value={editName} 
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                      <div className="grid grid-cols-4 gap-2">
-                        <div>
-                          <label className="text-[10px] text-gray-500 font-medium uppercase">Kcal</label>
-                          <input type="number" value={editCalories} onChange={(e) => setEditCalories(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-500 font-medium uppercase">Pro</label>
-                          <input type="number" value={editProtein} onChange={(e) => setEditProtein(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-500 font-medium uppercase">Carb</label>
-                          <input type="number" value={editCarbs} onChange={(e) => setEditCarbs(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-500 font-medium uppercase">Fat</label>
-                          <input type="number" value={editFats} onChange={(e) => setEditFats(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2 pt-2">
-                        <button onClick={() => setEditingEntry(null)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg">
-                          <X className="w-4 h-4" />
-                        </button>
-                        <button onClick={saveEdit} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg">
-                          <Check className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
+        <div className="divide-y divide-gray-50">
+          {entries.length === 0 ? (
+            <div className="p-4 text-sm text-gray-400 text-center italic">No entries yet</div>
+          ) : (
+            entries.map(entry => (
+              <div key={entry.id} className="p-4 group">
+                {editingEntry?.id === entry.id ? (
+                  <div className="space-y-3">
+                    <input 
+                      type="text" 
+                      value={editName} 
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                    <div className="grid grid-cols-4 gap-2">
                       <div>
-                        <p className="font-medium text-gray-900 text-sm">{entry.name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {Math.round(entry.macros.calories)} kcal • {Math.round(entry.macros.protein)}g P • {Math.round(entry.macros.carbs)}g C • {Math.round(entry.macros.fats)}g F
-                        </p>
+                        <label className="text-[10px] text-gray-500 font-medium uppercase">Kcal</label>
+                        <input type="number" value={editCalories} onChange={(e) => setEditCalories(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
                       </div>
-                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => startEditing(entry)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Edit Entry"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        {!entry.isSavedMeal && (
-                          <button 
-                            onClick={() => handleSaveMeal(entry)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="Save to Library"
-                          >
-                            <Bookmark className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => handleDelete(entry.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete Entry"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium uppercase">Pro</label>
+                        <input type="number" value={editProtein} onChange={(e) => setEditProtein(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium uppercase">Carb</label>
+                        <input type="number" value={editCarbs} onChange={(e) => setEditCarbs(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium uppercase">Fat</label>
+                        <input type="number" value={editFats} onChange={(e) => setEditFats(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
                       </div>
                     </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        )}
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button onClick={() => setEditingEntry(null)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg">
+                        <X className="w-4 h-4" />
+                      </button>
+                      <button onClick={saveEdit} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg">
+                        <Check className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{entry.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {Math.round(entry.macros.calories)} kcal • {Math.round(entry.macros.protein)}g P • {Math.round(entry.macros.carbs)}g C • {Math.round(entry.macros.fats)}g F
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => startEditing(entry)}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Edit Entry"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(entry.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Entry"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     );
   };
@@ -398,14 +296,14 @@ export const Dashboard: React.FC = () => {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="max-w-md mx-auto min-h-screen bg-gray-50 pb-64"
+      className="max-w-md lg:max-w-5xl mx-auto min-h-screen bg-gray-50 pb-64 lg:p-6 lg:pb-32 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start"
     >
       {/* Header / Macros */}
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="bg-white px-6 py-8 rounded-b-[2.5rem] shadow-sm mb-6"
+        className="lg:col-span-5 bg-white px-6 py-8 rounded-b-[2.5rem] lg:rounded-[2.5rem] shadow-sm mb-6 lg:mb-0 lg:sticky lg:top-6"
       >
         <div className="flex justify-between items-end mb-8">
           <div>
@@ -494,10 +392,11 @@ export const Dashboard: React.FC = () => {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.5 }}
-        className="px-4 space-y-4"
+        className="lg:col-span-7 px-4 lg:px-0 space-y-4"
       >
         {renderMealSection('breakfast', 'Breakfast')}
         {renderMealSection('lunch', 'Lunch')}
+        {renderMealSection('pre-workout', 'Pre-Workout')}
         {renderMealSection('dinner', 'Dinner')}
         {renderMealSection('snack', 'Snacks')}
       </motion.div>
@@ -545,40 +444,8 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* Quick Add Input (Sticky Bottom) */}
-      <div className="fixed bottom-[72px] left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 p-4 pb-safe z-40">
-        <div className="max-w-md mx-auto relative">
-          
-          {/* Library Dropdown */}
-          {showLibrary && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden max-h-60 overflow-y-auto">
-              <div className="p-3 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-                <h4 className="text-sm font-semibold text-gray-700">Meal Library</h4>
-                <button onClick={() => setShowLibrary(false)} className="p-1 hover:bg-gray-200 rounded-full">
-                  <X className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-              {savedMeals.length === 0 ? (
-                <div className="p-4 text-sm text-gray-500 text-center">No saved meals yet.</div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {savedMeals.map(meal => (
-                    <button
-                      key={meal.id}
-                      onClick={() => handleAddFromLibrary(meal)}
-                      className="w-full text-left p-3 hover:bg-indigo-50 transition-colors flex justify-between items-center"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{meal.name}</p>
-                        <p className="text-xs text-gray-500">{Math.round(meal.macros.calories)} kcal</p>
-                      </div>
-                      <Plus className="w-4 h-4 text-indigo-600" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
+      <div className="fixed bottom-[72px] lg:bottom-8 left-0 right-0 lg:left-auto lg:right-auto lg:w-full lg:max-w-xl lg:mx-auto bg-white/90 lg:bg-white/80 lg:shadow-2xl backdrop-blur-xl border-t lg:border border-gray-100 lg:rounded-3xl p-4 pb-safe z-40 lg:ml-[calc(50%-28rem)]">
+        <div className="max-w-md lg:max-w-full mx-auto relative">
           <form onSubmit={handleAddEntry} className="flex flex-col gap-2">
             {error && (
               <div className="bg-red-50 text-red-600 text-xs p-2 rounded-lg border border-red-100 flex items-start gap-2">
@@ -589,14 +456,6 @@ export const Dashboard: React.FC = () => {
             
             <div className="flex gap-2 items-end">
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLibrary(!showLibrary)}
-                  className="bg-indigo-50 text-indigo-600 p-3 rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center"
-                  title="Meal Library"
-                >
-                  <Library className="w-5 h-5" />
-                </button>
                 <select
                   value={selectedMeal}
                   onChange={(e) => setSelectedMeal(e.target.value as MealType)}
@@ -604,6 +463,7 @@ export const Dashboard: React.FC = () => {
                 >
                   <option value="breakfast">🍳 Brkfst</option>
                   <option value="lunch">🥗 Lunch</option>
+                  <option value="pre-workout">💪 Pre-W/O</option>
                   <option value="dinner">🥩 Dinner</option>
                   <option value="snack">🍎 Snack</option>
                 </select>

@@ -101,7 +101,7 @@ export function AdminDashboard() {
   );
 }
 
-function UserCard({ user, onStatusChange }: { user: UserProfile, onStatusChange: (id: string, status: 'approved' | 'rejected') => void }) {
+function UserCard({ user, onStatusChange }: { key?: React.Key, user: UserProfile, onStatusChange: (id: string, status: 'approved' | 'rejected') => void | Promise<void> }) {
   return (
     <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>

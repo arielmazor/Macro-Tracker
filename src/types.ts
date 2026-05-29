@@ -24,7 +24,7 @@ export interface Macros {
   fats: number;
 }
 
-export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export type MealType = 'breakfast' | 'lunch' | 'pre-workout' | 'dinner' | 'snack';
 
 export interface FoodEntry {
   id: string;
@@ -32,7 +32,6 @@ export interface FoodEntry {
   macros: Macros;
   mealType: MealType;
   timestamp: string;
-  isSavedMeal?: boolean;
 }
 
 export interface SavedMeal {

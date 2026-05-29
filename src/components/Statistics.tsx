@@ -57,7 +57,6 @@ export const Statistics: React.FC = () => {
       macros: meal.macros,
       mealType: 'snack', // Default to snack for quick add, user can change later
       timestamp: new Date().toISOString(),
-      isSavedMeal: true,
     });
     await dbService.incrementMealUsage(user.uid, meal.id);
     alert(`Added ${meal.name} to today's log!`);

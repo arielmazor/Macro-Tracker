@@ -88,7 +88,7 @@ export const parseFoodEntry = async (
   }
 
   // 2. Go to Gemini as fallback
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
+  const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('Gemini API key is missing. Add VITE_GEMINI_API_KEY to your .env file.');
   }
