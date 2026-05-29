@@ -409,7 +409,10 @@ export const Dashboard: React.FC = () => {
       >
         <div className="flex justify-between items-end mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500 tracking-tight mb-1">Macro Tracker</h1>
+            <div className="flex items-baseline gap-2 mb-1">
+              <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500 tracking-tight">Macro Tracker</h1>
+              <span className="text-sm font-medium text-gray-400">v1.0.1</span>
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <button 
                 onClick={() => setCurrentDateStr(format(subDays(parseISO(currentDateStr), 1), 'yyyy-MM-dd'))} 
