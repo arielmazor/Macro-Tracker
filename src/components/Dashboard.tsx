@@ -6,7 +6,7 @@ import { getTodayStr } from '../utils/storage';
 import { format, parseISO, addDays, subDays } from 'date-fns';
 import { FoodEntry, MealType, UserProfile, DailyLog } from '../types';
 import { parseFoodEntry } from '../services/gemini';
-import { Plus, Loader2, Trash2, ChevronLeft, ChevronRight, Edit2, X, Check, Settings, Copy } from 'lucide-react';
+import { Plus, Loader2, Trash2, ChevronLeft, ChevronRight, Edit2, X, Check, Settings, Copy, Clipboard } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -318,7 +318,7 @@ export const Dashboard: React.FC = () => {
           <div>
             <div className="flex items-baseline gap-2 mb-1">
               <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500 tracking-tight">Macro Tracker</h1>
-              <span className="text-sm font-medium text-gray-400">v1.0.3</span>
+              <span className="text-sm font-medium text-gray-400">v1.0.4</span>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <button 
@@ -488,20 +488,39 @@ export const Dashboard: React.FC = () => {
                   rows={1}
                   disabled={isLoading}
                 />
-                <div className="absolute right-2 bottom-1.5 flex items-center">
+                <div className="absolute right-2 bottom-1.5 flex items-center gap-1">
                   {isLoading ? (
                     <div className="p-1.5 text-indigo-600 flex items-center gap-2">
                       <span className="text-xs font-medium animate-pulse hidden sm:inline-block">Parsing...</span>
                       <Loader2 className="w-5 h-5 animate-spin" />
                     </div>
                   ) : (
-                    <button
-                      type="submit"
-                      disabled={!input.trim()}
-                      className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:bg-gray-400 transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
+                    <>
+                      {!input.trim() && (
+                        <button
+                          type="button"
+                          title="Paste from clipboard"
+                          onClick={async () => {
+                            try {
+                              const text = await navigator.clipboard.readText();
+                              if (text) setInput(text);
+                            } catch {
+                              // Clipboard access denied or empty
+                            }
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        >
+                          <Clipboard className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={!input.trim()}
+                        className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:bg-gray-400 transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
