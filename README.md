@@ -2,8 +2,6 @@
 
 An AI-powered nutrition and macro-tracking application that allows you to easily log your meals using natural language. Built with React, Vite, Tailwind CSS, Firebase, and the Google Gemini API.
 
-View your app in AI Studio: https://ai.studio/apps/ddbb1029-07a9-4a0c-aa32-16ce2742dedd
-
 ## Features
 
 - **AI-Powered Food Logging:** Just type what you ate (e.g., "120g eggs, 100g tuna") and the app will use Gemini AI to automatically parse and calculate calories, protein, carbs, and fats.
